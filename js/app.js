@@ -4,6 +4,9 @@
   const statusEl = document.getElementById("status");
   const scheduleEl = document.getElementById("schedule");
   const standingsEl = document.getElementById("standings");
+  const liveNowEl = document.getElementById("live-now-list");
+
+  const LIVE_POLL_MS = 30000;
 
   function setStatus(message, isError = false) {
     statusEl.textContent = message;
@@ -22,6 +25,40 @@
     } catch (err) {
       setStatus(`Could not load tournaments: ${err.message}`, true);
     }
+
+    refreshLiveNow();
+    setInterval(refreshLiveNow, LIVE_POLL_MS);
+  }
+
+  async function refreshLiveNow() {
+    try {
+      const events = await LolesportsLive.getLiveEvents();
+      renderLiveNow(events);
+    } catch (err) {
+      liveNowEl.innerHTML = `<p class="empty">Could not check live matches: ${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  function renderLiveNow(events) {
+    if (events.length === 0) {
+      liveNowEl.innerHTML = '<p class="empty">No matches live right now.</p>';
+      return;
+    }
+    liveNowEl.innerHTML = events.map(liveEventRow).join("");
+  }
+
+  function liveEventRow(event) {
+    const league = event.league?.name || "Unknown league";
+    const teams = event.match?.teams || [];
+    const teamsLabel = teams
+      .map((t) => `${escapeHtml(t.code || t.name || "TBD")}`)
+      .join(" vs ");
+    return `
+      <div class="live-row">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span class="live-league">${escapeHtml(league)}</span>
+        <span class="live-teams">${teamsLabel}</span>
+      </div>`;
   }
 
   function populateTournaments(tournaments) {
